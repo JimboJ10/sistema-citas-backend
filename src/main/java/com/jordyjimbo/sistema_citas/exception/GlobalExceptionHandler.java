@@ -56,6 +56,20 @@ public class GlobalExceptionHandler {
         return construirRespuesta(HttpStatus.UNAUTHORIZED, "Usuario o contraseña incorrectos");
     }
 
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<Map<String, Object>> manejarErrorGenerico(RuntimeException ex) {
+        String mensaje = ex.getMessage();
+
+        if (mensaje != null && mensaje.contains("Failed to generate content")) {
+            return construirRespuesta(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "El asistente virtual no está disponible en este momento (límite de uso alcanzado). Intenta de nuevo en unos minutos."
+            );
+        }
+
+        return construirRespuesta(HttpStatus.INTERNAL_SERVER_ERROR, "Ocurrió un error inesperado");
+    }
+
     private ResponseEntity<Map<String, Object>> construirRespuesta(HttpStatus status, String mensaje) {
         Map<String, Object> body = new HashMap<>();
         body.put("timestamp", LocalDateTime.now());
