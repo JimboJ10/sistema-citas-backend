@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -30,6 +31,7 @@ public class CitaController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("@citaPermisos.esDuenoOAsignado(#id, authentication)")
     public ResponseEntity<CitaResponse> buscarPorId(@PathVariable Long id) {
         return ResponseEntity.ok(citaService.buscarPorId(id));
     }
@@ -41,6 +43,7 @@ public class CitaController {
     }
 
     @PatchMapping("/{id}/estado")
+    @PreAuthorize("@citaPermisos.esDuenoOAsignado(#id, authentication)")
     public ResponseEntity<CitaResponse> cambiarEstado(
             @PathVariable Long id,
             @RequestParam Cita.EstadoCita nuevoEstado) {
