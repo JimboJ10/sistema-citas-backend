@@ -11,6 +11,7 @@ API REST para gestión de citas médicas (tipo clínica), con pacientes, doctore
 | Base de datos | PostgreSQL 16 |
 | ORM | Spring Data JPA / Hibernate |
 | Seguridad | Spring Security + JWT (jjwt 0.13.0) |
+| IA / Chatbot | Spring AI 2.0.1 + Google Gemini (gemini-3.6-flash) |
 | Build | Maven |
 | Utilidades | Lombok |
 
@@ -31,6 +32,7 @@ El proyecto sigue una arquitectura en capas estándar:
 - **Controller**: endpoints REST, sin lógica de negocio
 - **GlobalExceptionHandler**: manejo centralizado de errores con códigos HTTP consistentes
 - **security/**: piezas de autenticación JWT (filtro, generación/validación de tokens, adaptador de `UserDetails`) y autorización (`CitaPermisos`)
+- **chatbot/**: `CitasTools` (herramientas que el chatbot puede invocar) y `ChatbotController` (endpoint conversacional con memoria)
 
 ## Modelo de datos
 
@@ -46,29 +48,31 @@ El proyecto sigue una arquitectura en capas estándar:
 - JDK 25
 - PostgreSQL 16+ corriendo localmente
 - Maven (o usar el wrapper incluido `./mvnw`)
+- Una API key de [Google AI Studio](https://aistudio.google.com/app/apikey) (gratuita) para el chatbot
 
 ## Cómo levantar el proyecto localmente
 
 1. Clona el repositorio:
 ```bash
-   git clone https://github.com/JimboJ10/sistema-citas-backend.git
-   cd sistema-citas-backend
+git clone https://github.com/JimboJ10/sistema-citas-backend.git
+cd sistema-citas-backend
 ```
 
 2. Crea la base de datos en PostgreSQL:
 ```sql
-   CREATE DATABASE sistema_citas;
+CREATE DATABASE sistema_citas;
 ```
 
 3. Configura las variables de entorno necesarias:
 ```bash
 DB_PASSWORD=tu_contraseña_de_postgres
 JWT_SECRET=una-clave-secreta-de-al-menos-32-caracteres
+GEMINI_API_KEY=tu_api_key_de_google_ai_studio
 ```
 
 4. Ejecuta la aplicación:
 ```bash
-   ./mvnw spring-boot:run
+./mvnw spring-boot:run
 ```
 
 5. La API estará disponible en `http://localhost:8080`
@@ -79,12 +83,12 @@ La API usa **JWT** (JSON Web Tokens). El flujo es:
 
 1. Registrarse o iniciar sesión para obtener un token
 2. Enviar el token en cada petición protegida, en el header:
-```bash
+```
 Authorization: Bearer <token>
 ```
 
 **Registro:**
-```bash
+```
 POST /api/auth/registro
 ```
 ```json
@@ -99,7 +103,7 @@ POST /api/auth/registro
 `rol` puede ser `PACIENTE`, `DOCTOR` o `ADMIN`. `pacienteId`/`doctorId` son opcionales, para vincular la cuenta a un registro existente.
 
 **Login:**
-```bash
+```
 POST /api/auth/login
 ```
 ```json
@@ -127,6 +131,32 @@ Ambos devuelven:
 | Ver/gestionar una Cita específica | El `PACIENTE` dueño, el `DOCTOR` asignado, o `ADMIN` |
 | Resto de endpoints | Requieren estar autenticado |
 
+## Chatbot con IA
+
+El endpoint `/api/chatbot` expone un asistente conversacional (Google Gemini vía Spring AI) capaz de:
+
+- Listar especialidades y doctores disponibles
+- Consultar horarios reales de un doctor
+- Detectar conflictos de horario y sugerir alternativas
+- Crear una cita real cuando tiene todos los datos necesarios
+
+Todo esto usando datos reales de la base de datos (nunca inventados), gracias a un conjunto de *tools* (`CitasTools`) que el modelo puede invocar.
+
+**Uso:**
+```
+POST /api/chatbot
+```
+```json
+{
+  "mensaje": "Quiero una cita con el dermatólogo el lunes a las 9am",
+  "conversationId": "conv-001"
+}
+```
+
+El `conversationId` debe mantenerse igual entre mensajes de una misma conversación para que el chatbot recuerde el contexto (gracias a `MessageChatMemoryAdvisor`). Un `conversationId` distinto inicia una conversación nueva, sin memoria de la anterior.
+
+> **Nota sobre límites:** el tier gratuito de la API de Gemini permite 20 peticiones/día por modelo. Si se excede, el endpoint responde `503 Service Unavailable` con un mensaje claro en vez de un error crudo.
+
 ## Endpoints disponibles
 
 ### Autenticación
@@ -134,6 +164,11 @@ Ambos devuelven:
 |---|---|---|
 | POST | `/api/auth/registro` | Público |
 | POST | `/api/auth/login` | Público |
+
+### Chatbot
+| Método | Ruta | Acceso |
+|---|---|---|
+| POST | `/api/chatbot` | Autenticado |
 
 ### Especialidades
 | Método | Ruta | Acceso | Descripción |
@@ -197,6 +232,7 @@ Todas las respuestas de error siguen este formato:
 | 403 | Autenticado, pero sin permiso para esta acción |
 | 404 | Recurso no encontrado |
 | 409 | Conflicto (recurso duplicado, doble-reserva) |
+| 503 | El servicio de IA no está disponible (límite de cuota alcanzado) |
 
 ## Roadmap del proyecto
 
@@ -204,7 +240,7 @@ Todas las respuestas de error siguen este formato:
 - [x] Reglas de negocio (validación de horario, prevención de doble-reserva)
 - [x] Autenticación con JWT y roles (PACIENTE, DOCTOR, ADMIN)
 - [x] Autorización por rol y por propiedad de recurso (dueño de la cita)
-- [ ] Chatbot con IA para agendar citas por lenguaje natural
+- [x] Chatbot con IA para agendar citas por lenguaje natural (Spring AI + Gemini, con memoria de conversación)
 - [ ] Frontend en React + Vite + Tailwind
 - [ ] Tests unitarios y de integración (JUnit 5, Testcontainers)
 - [ ] Dockerización
@@ -214,4 +250,3 @@ Todas las respuestas de error siguen este formato:
 ## Autor
 
 Jordy Jimbo — Universidad Técnica de Machala, Tecnologías de la Información
-
