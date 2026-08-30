@@ -10,7 +10,7 @@ API REST para gestión de citas médicas (tipo clínica), con pacientes, doctore
 | Framework | Spring Boot 4.1.1 |
 | Base de datos | PostgreSQL 16 |
 | ORM | Spring Data JPA / Hibernate |
-| Seguridad | Spring Security (Basic Auth por ahora, JWT en progreso) |
+| Seguridad | Spring Security + JWT (jjwt 0.13.0) |
 | Build | Maven |
 | Utilidades | Lombok |
 
@@ -24,15 +24,17 @@ El proyecto sigue una arquitectura en capas estándar:
 - Los **Services** contienen las reglas de negocio y validaciones
 - Los **Repositories** son interfaces de Spring Data JPA sobre las **Entities**
 
-- **Entity**: mapeo directo a las tablas de PostgreSQL (Paciente, Doctor, Especialidad, HorarioDisponible, Cita)
+- **Entity**: mapeo directo a las tablas de PostgreSQL (Usuario, Paciente, Doctor, Especialidad, HorarioDisponible, Cita)
 - **Repository**: interfaces de Spring Data JPA, consultas derivadas por nombre de método
 - **Service**: lógica de negocio (validaciones, reglas, transacciones)
 - **DTO**: objetos de entrada/salida de la API, separados de las entidades
 - **Controller**: endpoints REST, sin lógica de negocio
 - **GlobalExceptionHandler**: manejo centralizado de errores con códigos HTTP consistentes
+- **security/**: piezas de autenticación JWT (filtro, generación/validación de tokens, adaptador de `UserDetails`) y autorización (`CitaPermisos`)
 
 ## Modelo de datos
 
+- **Usuario**: identidad y acceso (username, contraseña hasheada, rol). Puede estar ligado opcionalmente a un Paciente o a un Doctor, o a ninguno (caso de un ADMIN puro)
 - **Paciente**: puede ser invitado (sin cuenta, creado vía chatbot) o registrado
 - **Doctor**: asociado a una o más Especialidades
 - **Especialidad**: catálogo de especialidades médicas
@@ -60,8 +62,10 @@ El proyecto sigue una arquitectura en capas estándar:
 
 3. Configura las variables de entorno necesarias:
 ```bash
- DB_PASSWORD=tu_contraseña_de_postgres
+DB_PASSWORD=tu_contraseña_de_postgres
+JWT_SECRET=una-clave-secreta-de-al-menos-32-caracteres
 ```
+
 4. Ejecuta la aplicación:
 ```bash
    ./mvnw spring-boot:run
@@ -69,58 +73,110 @@ El proyecto sigue una arquitectura en capas estándar:
 
 5. La API estará disponible en `http://localhost:8080`
 
-### Autenticación (desarrollo)
+## Autenticación
 
-Actualmente la API usa Basic Auth con credenciales fijas de desarrollo:
-- Usuario: `admin`
-- Contraseña: `admin123`
+La API usa **JWT** (JSON Web Tokens). El flujo es:
 
-> Esto es temporal. Se está migrando a autenticación con JWT y roles (`PACIENTE`, `DOCTOR`, `ADMIN`).
+1. Registrarse o iniciar sesión para obtener un token
+2. Enviar el token en cada petición protegida, en el header:
+```bash
+Authorization: Bearer <token>
+```
+
+**Registro:**
+```bash
+POST /api/auth/registro
+```
+```json
+{
+  "username": "usuario.ejemplo",
+  "password": "contraseñaSegura123",
+  "rol": "PACIENTE",
+  "pacienteId": null,
+  "doctorId": null
+}
+```
+`rol` puede ser `PACIENTE`, `DOCTOR` o `ADMIN`. `pacienteId`/`doctorId` son opcionales, para vincular la cuenta a un registro existente.
+
+**Login:**
+```bash
+POST /api/auth/login
+```
+```json
+{
+  "username": "usuario.ejemplo",
+  "password": "contraseñaSegura123"
+}
+```
+
+Ambos devuelven:
+```json
+{
+  "token": "eyJhbGciOiJIUzUxMiJ9...",
+  "username": "usuario.ejemplo",
+  "rol": "PACIENTE"
+}
+```
+
+### Reglas de autorización por rol
+
+| Recurso | Regla |
+|---|---|
+| `GET` de Especialidades y Doctores | Público, sin autenticación |
+| Crear/editar/eliminar Especialidades y Doctores | Solo `ADMIN` |
+| Ver/gestionar una Cita específica | El `PACIENTE` dueño, el `DOCTOR` asignado, o `ADMIN` |
+| Resto de endpoints | Requieren estar autenticado |
 
 ## Endpoints disponibles
 
-### Especialidades
-| Método | Ruta | Descripción |
+### Autenticación
+| Método | Ruta | Acceso |
 |---|---|---|
-| GET | `/api/especialidades` | Lista todas las especialidades |
-| GET | `/api/especialidades/{id}` | Busca una especialidad por id |
-| POST | `/api/especialidades` | Crea una especialidad |
-| PUT | `/api/especialidades/{id}` | Actualiza una especialidad |
-| DELETE | `/api/especialidades/{id}` | Elimina una especialidad |
+| POST | `/api/auth/registro` | Público |
+| POST | `/api/auth/login` | Público |
+
+### Especialidades
+| Método | Ruta | Acceso | Descripción |
+|---|---|---|---|
+| GET | `/api/especialidades` | Público | Lista todas las especialidades |
+| GET | `/api/especialidades/{id}` | Público | Busca una especialidad por id |
+| POST | `/api/especialidades` | ADMIN | Crea una especialidad |
+| PUT | `/api/especialidades/{id}` | ADMIN | Actualiza una especialidad |
+| DELETE | `/api/especialidades/{id}` | ADMIN | Elimina una especialidad |
 
 ### Doctores
-| Método | Ruta | Descripción |
-|---|---|---|
-| GET | `/api/doctores` | Lista todos los doctores |
-| GET | `/api/doctores/{id}` | Busca un doctor por id |
-| POST | `/api/doctores` | Crea un doctor (con especialidades) |
-| PUT | `/api/doctores/{id}` | Actualiza un doctor |
-| DELETE | `/api/doctores/{id}` | Elimina un doctor |
+| Método | Ruta | Acceso | Descripción |
+|---|---|---|---|
+| GET | `/api/doctores` | Público | Lista todos los doctores |
+| GET | `/api/doctores/{id}` | Público | Busca un doctor por id |
+| POST | `/api/doctores` | ADMIN | Crea un doctor (con especialidades) |
+| PUT | `/api/doctores/{id}` | ADMIN | Actualiza un doctor |
+| DELETE | `/api/doctores/{id}` | ADMIN | Elimina un doctor |
 
 ### Pacientes
-| Método | Ruta | Descripción |
-|---|---|---|
-| GET | `/api/pacientes` | Lista todos los pacientes |
-| GET | `/api/pacientes/{id}` | Busca un paciente por id |
-| POST | `/api/pacientes` | Crea un paciente (soporta invitados sin email) |
-| PUT | `/api/pacientes/{id}` | Actualiza un paciente |
-| DELETE | `/api/pacientes/{id}` | Elimina un paciente |
+| Método | Ruta | Acceso | Descripción |
+|---|---|---|---|
+| GET | `/api/pacientes` | Autenticado | Lista todos los pacientes |
+| GET | `/api/pacientes/{id}` | Autenticado | Busca un paciente por id |
+| POST | `/api/pacientes` | Autenticado | Crea un paciente (soporta invitados sin email) |
+| PUT | `/api/pacientes/{id}` | Autenticado | Actualiza un paciente |
+| DELETE | `/api/pacientes/{id}` | Autenticado | Elimina un paciente |
 
 ### Horarios disponibles
-| Método | Ruta | Descripción |
-|---|---|---|
-| GET | `/api/horarios/doctor/{doctorId}` | Lista los horarios de un doctor |
-| POST | `/api/horarios` | Crea un horario (día en español, ej. `"lunes"`) |
-| DELETE | `/api/horarios/{id}` | Elimina un horario |
+| Método | Ruta | Acceso | Descripción |
+|---|---|---|---|
+| GET | `/api/horarios/doctor/{doctorId}` | Autenticado | Lista los horarios de un doctor |
+| POST | `/api/horarios` | Autenticado | Crea un horario (día en español, ej. `"lunes"`) |
+| DELETE | `/api/horarios/{id}` | Autenticado | Elimina un horario |
 
 ### Citas
-| Método | Ruta | Descripción |
-|---|---|---|
-| GET | `/api/citas/paciente/{pacienteId}` | Lista las citas de un paciente |
-| GET | `/api/citas/doctor/{doctorId}` | Lista las citas de un doctor |
-| GET | `/api/citas/{id}` | Busca una cita por id |
-| POST | `/api/citas` | Crea una cita (valida horario y evita doble-reserva) |
-| PATCH | `/api/citas/{id}/estado?nuevoEstado=CONFIRMADA` | Cambia el estado de una cita |
+| Método | Ruta | Acceso | Descripción |
+|---|---|---|---|
+| GET | `/api/citas/paciente/{pacienteId}` | Autenticado | Lista las citas de un paciente |
+| GET | `/api/citas/doctor/{doctorId}` | Autenticado | Lista las citas de un doctor |
+| GET | `/api/citas/{id}` | Dueño / asignado / ADMIN | Busca una cita por id |
+| POST | `/api/citas` | Autenticado | Crea una cita (valida horario y evita doble-reserva) |
+| PATCH | `/api/citas/{id}/estado?nuevoEstado=CONFIRMADA` | Dueño / asignado / ADMIN | Cambia el estado de una cita |
 
 ## Manejo de errores
 
@@ -137,6 +193,8 @@ Todas las respuestas de error siguen este formato:
 | Código | Cuándo ocurre |
 |---|---|
 | 400 | Datos inválidos o regla de negocio violada |
+| 401 | No autenticado, o credenciales incorrectas |
+| 403 | Autenticado, pero sin permiso para esta acción |
 | 404 | Recurso no encontrado |
 | 409 | Conflicto (recurso duplicado, doble-reserva) |
 
@@ -144,7 +202,8 @@ Todas las respuestas de error siguen este formato:
 
 - [x] Modelado de datos y CRUD completo (Especialidad, Doctor, Paciente, HorarioDisponible, Cita)
 - [x] Reglas de negocio (validación de horario, prevención de doble-reserva)
-- [ ] Autenticación con JWT y roles
+- [x] Autenticación con JWT y roles (PACIENTE, DOCTOR, ADMIN)
+- [x] Autorización por rol y por propiedad de recurso (dueño de la cita)
 - [ ] Chatbot con IA para agendar citas por lenguaje natural
 - [ ] Frontend en React + Vite + Tailwind
 - [ ] Tests unitarios y de integración (JUnit 5, Testcontainers)
@@ -155,5 +214,4 @@ Todas las respuestas de error siguen este formato:
 ## Autor
 
 Jordy Jimbo — Universidad Técnica de Machala, Tecnologías de la Información
-
 
