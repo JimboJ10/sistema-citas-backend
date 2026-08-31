@@ -1,5 +1,6 @@
 package com.jordyjimbo.sistema_citas.service;
 
+import com.jordyjimbo.sistema_citas.dto.AuthCrearUsuarioRequest;
 import com.jordyjimbo.sistema_citas.dto.AuthLoginRequest;
 import com.jordyjimbo.sistema_citas.dto.AuthRegistroRequest;
 import com.jordyjimbo.sistema_citas.dto.AuthResponse;
@@ -40,7 +41,7 @@ public class AuthService {
         Usuario.UsuarioBuilder builder = Usuario.builder()
                 .username(request.username())
                 .passwordHash(passwordEncoder.encode(request.password()))
-                .rol(request.rol())
+                .rol(Usuario.Rol.PACIENTE)
                 .activo(true);
 
         if (request.pacienteId() != null) {
@@ -76,5 +77,35 @@ public class AuthService {
         String token = jwtService.generarToken(usuarioDetails);
 
         return new AuthResponse(token, usuario.getUsername(), usuario.getRol().name());
+    }
+
+    @Transactional
+    public AuthResponse crearUsuarioConRol(AuthCrearUsuarioRequest request) {
+        if (usuarioRepository.existsByUsername(request.username())) {
+            throw new RecursoDuplicadoException("Ya existe un usuario con el username '" + request.username() + "'");
+        }
+
+        Usuario.UsuarioBuilder builder = Usuario.builder()
+                .username(request.username())
+                .passwordHash(passwordEncoder.encode(request.password()))
+                .rol(request.rol())
+                .activo(true);
+
+        if (request.pacienteId() != null) {
+            Paciente paciente = pacienteRepository.findById(request.pacienteId())
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Paciente con id " + request.pacienteId() + " no encontrado"));
+            paciente.setRegistrado(true);
+            pacienteRepository.save(paciente);
+            builder.paciente(paciente);
+        }
+
+        if (request.doctorId() != null) {
+            Doctor doctor = doctorRepository.findById(request.doctorId())
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Doctor con id " + request.doctorId() + " no encontrado"));
+            builder.doctor(doctor);
+        }
+
+        Usuario usuario = usuarioRepository.save(builder.build());
+        return new AuthResponse(null, usuario.getUsername(), usuario.getRol().name());
     }
 }

@@ -1,5 +1,6 @@
 package com.jordyjimbo.sistema_citas.controller;
 
+import com.jordyjimbo.sistema_citas.dto.AuthCrearUsuarioRequest;
 import com.jordyjimbo.sistema_citas.dto.AuthLoginRequest;
 import com.jordyjimbo.sistema_citas.dto.AuthRegistroRequest;
 import com.jordyjimbo.sistema_citas.dto.AuthResponse;
@@ -8,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,5 +32,12 @@ public class AuthController {
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody AuthLoginRequest request) {
         AuthResponse response = authService.login(request);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/usuarios")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<AuthResponse> crearUsuarioConRol(@Valid @RequestBody AuthCrearUsuarioRequest request) {
+        AuthResponse response = authService.crearUsuarioConRol(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }

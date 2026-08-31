@@ -2,6 +2,7 @@ package com.jordyjimbo.sistema_citas.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -54,6 +55,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> manejarCredencialesInvalidas(
             org.springframework.security.authentication.BadCredentialsException ex) {
         return construirRespuesta(HttpStatus.UNAUTHORIZED, "Usuario o contraseña incorrectos");
+    }
+
+    @ExceptionHandler(AuthorizationDeniedException.class)
+    public ResponseEntity<Map<String, Object>> manejarAccesoDenegado(AuthorizationDeniedException ex) {
+        return construirRespuesta(HttpStatus.FORBIDDEN, "No tienes permiso para realizar esta acción");
     }
 
     @ExceptionHandler(RuntimeException.class)
