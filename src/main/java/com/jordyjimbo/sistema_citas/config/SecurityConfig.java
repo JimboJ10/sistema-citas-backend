@@ -34,6 +34,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/login", "/api/auth/registro").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/especialidades/**", "/api/doctores/**").permitAll()
+                        .requestMatchers("/api/chatbot").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
