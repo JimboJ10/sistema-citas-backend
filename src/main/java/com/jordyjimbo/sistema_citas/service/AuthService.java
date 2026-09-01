@@ -38,31 +38,27 @@ public class AuthService {
             throw new RecursoDuplicadoException("Ya existe un usuario con el username '" + request.username() + "'");
         }
 
-        Usuario.UsuarioBuilder builder = Usuario.builder()
+        Paciente paciente = Paciente.builder()
+                .nombres(request.nombres())
+                .apellidos(request.apellidos())
+                .telefono(request.telefono())
+                .registrado(true)
+                .build();
+        pacienteRepository.save(paciente);
+
+        Usuario usuario = Usuario.builder()
                 .username(request.username())
                 .passwordHash(passwordEncoder.encode(request.password()))
                 .rol(Usuario.Rol.PACIENTE)
-                .activo(true);
+                .activo(true)
+                .paciente(paciente)
+                .build();
+        usuarioRepository.save(usuario);
 
-        if (request.pacienteId() != null) {
-            Paciente paciente = pacienteRepository.findById(request.pacienteId())
-                    .orElseThrow(() -> new RecursoNoEncontradoException("Paciente con id " + request.pacienteId() + " no encontrado"));
-            paciente.setRegistrado(true);
-            pacienteRepository.save(paciente);
-            builder.paciente(paciente);
-        }
-
-        if (request.doctorId() != null) {
-            Doctor doctor = doctorRepository.findById(request.doctorId())
-                    .orElseThrow(() -> new RecursoNoEncontradoException("Doctor con id " + request.doctorId() + " no encontrado"));
-            builder.doctor(doctor);
-        }
-
-        Usuario usuario = usuarioRepository.save(builder.build());
         UsuarioDetails usuarioDetails = new UsuarioDetails(usuario);
         String token = jwtService.generarToken(usuarioDetails);
 
-        return new AuthResponse(token, usuario.getUsername(), usuario.getRol().name());
+        return new AuthResponse(token, usuario.getUsername(), usuario.getRol().name(), paciente.getId(), null);
     }
 
     public AuthResponse login(AuthLoginRequest request) {
@@ -76,7 +72,10 @@ public class AuthService {
         UsuarioDetails usuarioDetails = new UsuarioDetails(usuario);
         String token = jwtService.generarToken(usuarioDetails);
 
-        return new AuthResponse(token, usuario.getUsername(), usuario.getRol().name());
+        Long pacienteId = usuario.getPaciente() != null ? usuario.getPaciente().getId() : null;
+        Long doctorId = usuario.getDoctor() != null ? usuario.getDoctor().getId() : null;
+
+        return new AuthResponse(token, usuario.getUsername(), usuario.getRol().name(), pacienteId, doctorId);
     }
 
     @Transactional
@@ -91,21 +90,24 @@ public class AuthService {
                 .rol(request.rol())
                 .activo(true);
 
-        if (request.pacienteId() != null) {
-            Paciente paciente = pacienteRepository.findById(request.pacienteId())
-                    .orElseThrow(() -> new RecursoNoEncontradoException("Paciente con id " + request.pacienteId() + " no encontrado"));
+        Long pacienteId = request.pacienteId();
+        Long doctorId = request.doctorId();
+
+        if (pacienteId != null) {
+            Paciente paciente = pacienteRepository.findById(pacienteId)
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Paciente con id " + pacienteId + " no encontrado"));
             paciente.setRegistrado(true);
             pacienteRepository.save(paciente);
             builder.paciente(paciente);
         }
 
-        if (request.doctorId() != null) {
-            Doctor doctor = doctorRepository.findById(request.doctorId())
-                    .orElseThrow(() -> new RecursoNoEncontradoException("Doctor con id " + request.doctorId() + " no encontrado"));
+        if (doctorId != null) {
+            Doctor doctor = doctorRepository.findById(doctorId)
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Doctor con id " + doctorId + " no encontrado"));
             builder.doctor(doctor);
         }
 
         Usuario usuario = usuarioRepository.save(builder.build());
-        return new AuthResponse(null, usuario.getUsername(), usuario.getRol().name());
+        return new AuthResponse(null, usuario.getUsername(), usuario.getRol().name(), pacienteId, doctorId);
     }
 }

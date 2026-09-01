@@ -1,8 +1,6 @@
 package com.jordyjimbo.sistema_citas.dto;
 
-import com.jordyjimbo.sistema_citas.entity.Usuario;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record AuthRegistroRequest(
@@ -15,11 +13,16 @@ public record AuthRegistroRequest(
         @Size(min = 8, message = "La contraseña debe tener al menos 8 caracteres")
         String password,
 
-        @NotNull(message = "El rol es obligatorio")
-        Usuario.Rol rol,
+        @NotBlank(message = "Los nombres son obligatorios")
+        @Size(max = 100)
+        String nombres,
 
-        Long pacienteId,
+        @NotBlank(message = "Los apellidos son obligatorios")
+        @Size(max = 100)
+        String apellidos,
 
-        Long doctorId
+        @NotBlank(message = "El teléfono es obligatorio")
+        @Size(max = 20)
+        String telefono
 ) {
 }
