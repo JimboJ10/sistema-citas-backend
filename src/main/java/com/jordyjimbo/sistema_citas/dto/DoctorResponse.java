@@ -8,6 +8,7 @@ public record DoctorResponse(
         String apellidos,
         String email,
         String telefono,
-        Set<EspecialidadResponse> especialidades
+        Set<EspecialidadResponse> especialidades,
+        boolean tieneAcceso
 ) {
 }

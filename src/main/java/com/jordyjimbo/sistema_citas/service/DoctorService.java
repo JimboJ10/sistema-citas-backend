@@ -9,6 +9,7 @@ import com.jordyjimbo.sistema_citas.exception.RecursoDuplicadoException;
 import com.jordyjimbo.sistema_citas.exception.RecursoNoEncontradoException;
 import com.jordyjimbo.sistema_citas.repository.DoctorRepository;
 import com.jordyjimbo.sistema_citas.repository.EspecialidadRepository;
+import com.jordyjimbo.sistema_citas.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,7 @@ public class DoctorService {
 
     private final DoctorRepository doctorRepository;
     private final EspecialidadRepository especialidadRepository;
+    private final UsuarioRepository usuarioRepository;
 
     public List<DoctorResponse> listarTodos() {
         return doctorRepository.findAll()
@@ -104,13 +106,16 @@ public class DoctorService {
                 .map(e -> new EspecialidadResponse(e.getId(), e.getNombre(), e.getDescripcion()))
                 .collect(Collectors.toSet());
 
+        boolean tieneAcceso = usuarioRepository.existsByDoctor_Id(doctor.getId());
+
         return new DoctorResponse(
                 doctor.getId(),
                 doctor.getNombres(),
                 doctor.getApellidos(),
                 doctor.getEmail(),
                 doctor.getTelefono(),
-                especialidades
+                especialidades,
+                tieneAcceso
         );
     }
 
