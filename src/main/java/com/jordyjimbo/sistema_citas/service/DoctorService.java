@@ -81,6 +81,13 @@ public class DoctorService {
         doctorRepository.deleteById(id);
     }
 
+    public List<DoctorResponse> listarPorEspecialidad(Long especialidadId) {
+        return doctorRepository.findByEspecialidades_Id(especialidadId)
+                .stream()
+                .map(this::aResponse)
+                .toList();
+    }
+
     private Set<Especialidad> buscarEspecialidades(Set<Long> ids) {
         Set<Especialidad> especialidades = new java.util.HashSet<>(especialidadRepository.findAllById(ids));
 
@@ -106,4 +113,5 @@ public class DoctorService {
                 especialidades
         );
     }
+
 }

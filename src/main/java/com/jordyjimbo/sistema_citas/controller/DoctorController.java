@@ -24,6 +24,11 @@ public class DoctorController {
         return ResponseEntity.ok(doctorService.listarTodos());
     }
 
+    @GetMapping("/especialidad/{especialidadId}")
+    public ResponseEntity<List<DoctorResponse>> listarPorEspecialidad(@PathVariable Long especialidadId) {
+        return ResponseEntity.ok(doctorService.listarPorEspecialidad(especialidadId));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<DoctorResponse> buscarPorId(@PathVariable Long id) {
         return ResponseEntity.ok(doctorService.buscarPorId(id));
