@@ -107,6 +107,13 @@ public class CitaService {
         }
     }
 
+    public List<CitaResponse> listarTodas() {
+        return citaRepository.findAll()
+                .stream()
+                .map(this::aResponse)
+                .toList();
+    }
+
     private CitaResponse aResponse(Cita cita) {
         return new CitaResponse(
                 cita.getId(),

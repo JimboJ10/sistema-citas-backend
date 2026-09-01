@@ -49,4 +49,10 @@ public class CitaController {
             @RequestParam Cita.EstadoCita nuevoEstado) {
         return ResponseEntity.ok(citaService.cambiarEstado(id, nuevoEstado));
     }
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<CitaResponse>> listarTodas() {
+        return ResponseEntity.ok(citaService.listarTodas());
+    }
 }
