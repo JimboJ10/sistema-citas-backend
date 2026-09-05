@@ -7,6 +7,8 @@ import com.jordyjimbo.sistema_citas.entity.Doctor;
 import com.jordyjimbo.sistema_citas.entity.Especialidad;
 import com.jordyjimbo.sistema_citas.exception.RecursoDuplicadoException;
 import com.jordyjimbo.sistema_citas.exception.RecursoNoEncontradoException;
+import com.jordyjimbo.sistema_citas.exception.SolicitudInvalidaException;
+import com.jordyjimbo.sistema_citas.repository.CitaRepository;
 import com.jordyjimbo.sistema_citas.repository.DoctorRepository;
 import com.jordyjimbo.sistema_citas.repository.EspecialidadRepository;
 import com.jordyjimbo.sistema_citas.repository.UsuarioRepository;
@@ -26,6 +28,7 @@ public class DoctorService {
     private final DoctorRepository doctorRepository;
     private final EspecialidadRepository especialidadRepository;
     private final UsuarioRepository usuarioRepository;
+    private final CitaRepository citaRepository;
 
     public List<DoctorResponse> listarTodos() {
         return doctorRepository.findAll()
@@ -64,6 +67,12 @@ public class DoctorService {
         Doctor doctor = doctorRepository.findById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Doctor con id " + id + " no encontrado"));
 
+        doctorRepository.findByEmail(request.email())
+                .filter(otro -> !otro.getId().equals(id))
+                .ifPresent(otro -> {
+                    throw new RecursoDuplicadoException("Ya existe otro doctor con el email '" + request.email() + "'");
+                });
+
         Set<Especialidad> especialidades = buscarEspecialidades(request.especialidadIds());
 
         doctor.setNombres(request.nombres());
@@ -77,9 +86,16 @@ public class DoctorService {
 
     @Transactional
     public void eliminar(Long id) {
-        if (!doctorRepository.existsById(id)) {
-            throw new RecursoNoEncontradoException("Doctor con id " + id + " no encontrado");
+        Doctor doctor = doctorRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Doctor con id " + id + " no encontrado"));
+
+        if (!citaRepository.findByDoctor_Id(id).isEmpty()) {
+            throw new SolicitudInvalidaException(
+                    "No se puede eliminar a " + doctor.getNombres() + " " + doctor.getApellidos()
+                            + " porque tiene citas asociadas."
+            );
         }
+
         doctorRepository.deleteById(id);
     }
 
