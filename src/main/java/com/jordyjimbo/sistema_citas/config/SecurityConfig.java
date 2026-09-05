@@ -39,7 +39,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/login", "/api/auth/registro").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/especialidades/**", "/api/doctores/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/especialidades/**", "/api/doctores/**", "/api/horarios/**").permitAll()
                         .requestMatchers("/api/chatbot").permitAll()
                         .anyRequest().authenticated()
                 )
