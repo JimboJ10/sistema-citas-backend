@@ -62,6 +62,15 @@ public class GlobalExceptionHandler {
         return construirRespuesta(HttpStatus.FORBIDDEN, "No tienes permiso para realizar esta acción");
     }
 
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> manejarIntegridadReferencial(
+            org.springframework.dao.DataIntegrityViolationException ex) {
+        return construirRespuesta(
+                HttpStatus.CONFLICT,
+                "No se puede eliminar este recurso porque está siendo utilizado por otros datos del sistema"
+        );
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> manejarErrorGenerico(RuntimeException ex) {
         String mensaje = ex.getMessage();

@@ -5,6 +5,7 @@ import com.jordyjimbo.sistema_citas.dto.EspecialidadResponse;
 import com.jordyjimbo.sistema_citas.entity.Especialidad;
 import com.jordyjimbo.sistema_citas.exception.RecursoDuplicadoException;
 import com.jordyjimbo.sistema_citas.exception.RecursoNoEncontradoException;
+import com.jordyjimbo.sistema_citas.exception.SolicitudInvalidaException;
 import com.jordyjimbo.sistema_citas.repository.EspecialidadRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -59,9 +60,15 @@ public class EspecialidadService {
 
     @Transactional
     public void eliminar(Long id) {
-        if (!especialidadRepository.existsById(id)) {
-            throw new RecursoNoEncontradoException("Especialidad con id " + id + " no encontrada");
+        Especialidad especialidad = especialidadRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Especialidad con id " + id + " no encontrada"));
+
+        if (!especialidad.getDoctores().isEmpty()) {
+            throw new SolicitudInvalidaException(
+                    "No se puede eliminar '" + especialidad.getNombre() + "' porque tiene doctores asociados. Reasigna o elimina esos doctores primero."
+            );
         }
+
         especialidadRepository.deleteById(id);
     }
 
