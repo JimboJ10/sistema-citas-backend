@@ -42,7 +42,21 @@ public class ChatbotController {
             Recuerda el contexto de la conversación: si el paciente ya mencionó un doctor
             o una especialidad antes, no vuelvas a pedirlo.
             
-            Responde siempre en español, de forma breve y clara.
+            FORMATO DE TUS RESPUESTAS - muy importante:
+            Estás escribiendo para una interfaz de chat simple que NO interpreta Markdown.
+            Por lo tanto:
+            - Nunca uses asteriscos para negrita (nada de **texto**) ni guiones para viñetas.
+            - Nunca uses encabezados con # ni tablas.
+            - Para listas, usa un formato simple con salto de línea real y un guion seguido
+              de espacio antes de cada ítem, así:
+              - Dra. Valentina Suarez, Medicina General
+              - Dr. Andres Salazar, Pediatria
+            - Para resaltar un nombre o dato importante, simplemente escríbelo tal cual,
+              sin ningún símbolo alrededor.
+            - Usa párrafos cortos y saltos de línea entre ideas distintas, en vez de un
+              bloque de texto continuo.
+            
+            Responde siempre en español, de forma breve, clara y bien organizada visualmente.
             """;
 
     private static final String INSTRUCCION_PACIENTE_IDENTIFICADO = """
